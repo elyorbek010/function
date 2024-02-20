@@ -1,12 +1,19 @@
-﻿# CMakeList.txt : CMake project for function, include source and define
-# project specific logic here.
-#
+﻿Include(FetchContent)
 
-# Add source to this project's executable.
-add_executable (function "function.cpp" "function.h")
+FetchContent_Declare(
+  Catch2
+  GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+  GIT_TAG        v3.0.1 # or a later release
+)
 
-if (CMAKE_VERSION VERSION_GREATER 3.12)
-  set_property(TARGET function PROPERTY CXX_STANDARD 20)
-endif()
+FetchContent_MakeAvailable(Catch2)
 
-# TODO: Add tests and install targets if needed.
+add_library(function "src/function.cpp")
+target_include_directories(function PRIVATE inc)
+
+add_executable(function_tests "test/test.cpp")
+target_link_libraries(function_tests PRIVATE function PRIVATE Catch2::Catch2WithMain)
+target_include_directories(function_tests PRIVATE inc)
+
+target_compile_options(function_tests PUBLIC "$<$<CONFIG:DEBUG>:${GCC_COMPILE_DEBUG_OPTIONS}>")
+target_compile_options(function_tests PUBLIC "$<$<CONFIG:RELEASE>:${GCC_COMPILE_RELEASE_OPTIONS}>")
