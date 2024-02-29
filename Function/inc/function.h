@@ -33,9 +33,7 @@ public:
 		: wrappedFunctionPtr(other.wrappedFunctionPtr->clone())
 	{ }
 
-	FunctionWrapper(FunctionWrapper&& other) noexcept
-		: wrappedFunctionPtr(std::move(other.wrappedFunctionPtr))
-	{ }
+	FunctionWrapper(FunctionWrapper&& other) = default;
 
 	template<class FunctionType>
 	FunctionWrapper(FunctionType&& function)
@@ -51,23 +49,17 @@ public:
 
 	FunctionWrapper& operator=(const FunctionWrapper& rhs)
 	{
-		FunctionWrapper tmp(rhs);
-		tmp.swap(*this);
+		rhs.wrappedFunctionPtr->clone().swap(this->wrappedFunctionPtr);
 		return *this;
 	}
 
 	FunctionWrapper& operator=(FunctionWrapper& rhs)
 	{
-		FunctionWrapper tmp(rhs);
-		tmp.swap(*this);
+		rhs.wrappedFunctionPtr->clone().swap(this->wrappedFunctionPtr);
 		return *this;
 	}
 
-	FunctionWrapper& operator=(FunctionWrapper&& rhs)
-	{
-		wrappedFunctionPtr = std::move(rhs.wrappedFunctionPtr);
-		return *this;
-	}
+	FunctionWrapper& operator=(FunctionWrapper&& rhs) = default;
 	
 	template<class FunctionType>
 	FunctionWrapper& operator=(FunctionType&& function)
@@ -101,11 +93,6 @@ public:
 	}
 
 private:
-
-	void swap(FunctionWrapper& other)
-	{
-		std::swap(this->wrappedFunctionPtr, other.wrappedFunctionPtr);
-	}
 
 	class FunctionBase
 	{
