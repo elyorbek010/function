@@ -134,6 +134,20 @@ TEST_CASE("assignment operator", "")
 		func = identical_return;
 		REQUIRE(func(777) == 777);
 	}
+
+	SECTION("FunctionWrapper", "FunctionWrapper is assigned to FunctionWrapper")
+	{
+		DivisionBy2 divider;
+		FunctionWrapper<int(int)> func1;
+		FunctionWrapper<int(int)> func2;
+
+		func1 = identical_return;
+		func2 = divider;
+
+		func1 = func2;
+		REQUIRE(func1(777) == 388);
+		REQUIRE(func2(777) == 388);
+	}
 }
 
 TEST_CASE("move assignment", "")
