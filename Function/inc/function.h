@@ -26,11 +26,11 @@ public:
 	{ }
 
 	FunctionWrapper(const FunctionWrapper& other)
-		: wrappedFunctionPtr(other.wrappedFunctionPtr)
+		: wrappedFunctionPtr(other.wrappedFunctionPtr->clone())
 	{ }
 
 	FunctionWrapper(FunctionWrapper& other)
-		: wrappedFunctionPtr(other.wrappedFunctionPtr)
+		: wrappedFunctionPtr(other.wrappedFunctionPtr->clone())
 	{ }
 
 	FunctionWrapper(FunctionWrapper&& other) noexcept
@@ -39,7 +39,7 @@ public:
 
 	template<class FunctionType>
 	FunctionWrapper(FunctionType&& function)
-		: wrappedFunctionPtr(std::make_shared<ConcreteFunction<FunctionType>>(std::forward<FunctionType>(function)))
+		: wrappedFunctionPtr(std::make_unique<ConcreteFunction<FunctionType>>(std::forward<FunctionType>(function)))
 	{ }
 
 	// Assignment operator overloading
@@ -49,28 +49,30 @@ public:
 		return *this;
 	}
 
-	FunctionWrapper& operator=(const FunctionWrapper& other)
+	FunctionWrapper& operator=(const FunctionWrapper& rhs)
 	{
-		wrappedFunctionPtr = other.wrappedFunctionPtr;
+		FunctionWrapper tmp(rhs);
+		tmp.swap(*this);
 		return *this;
 	}
 
-	FunctionWrapper& operator=(FunctionWrapper& other)
+	FunctionWrapper& operator=(FunctionWrapper& rhs)
 	{
-		wrappedFunctionPtr = other.wrappedFunctionPtr;
+		FunctionWrapper tmp(rhs);
+		tmp.swap(*this);
 		return *this;
 	}
 
-	FunctionWrapper& operator=(FunctionWrapper&& other)
+	FunctionWrapper& operator=(FunctionWrapper&& rhs)
 	{
-		wrappedFunctionPtr = std::move(other.wrappedFunctionPtr);
+		wrappedFunctionPtr = std::move(rhs.wrappedFunctionPtr);
 		return *this;
 	}
 	
 	template<class FunctionType>
 	FunctionWrapper& operator=(FunctionType&& function)
 	{
-		wrappedFunctionPtr = std::make_shared<ConcreteFunction<FunctionType>>(std::forward<FunctionType>(function));
+		wrappedFunctionPtr = std::make_unique<ConcreteFunction<FunctionType>>(std::forward<FunctionType>(function));
 		return *this;
 	}
 	
@@ -90,7 +92,6 @@ public:
 		return this->operator bool();
 	}
 
-	// Invoke operator overloading
 	ReturnType operator()(Args... args) const
 	{
 		if (wrappedFunctionPtr == nullptr)
@@ -101,12 +102,17 @@ public:
 
 private:
 
+	void swap(FunctionWrapper& other)
+	{
+		std::swap(this->wrappedFunctionPtr, other.wrappedFunctionPtr);
+	}
+
 	class FunctionBase
 	{
 	public:
-		FunctionBase() = default;
 		virtual ~FunctionBase() = default;
 
+		virtual std::unique_ptr<FunctionBase> clone() const = 0;
 		virtual ReturnType operator()(Args... args) const = 0;
 	};
 
@@ -115,7 +121,12 @@ private:
 	{
 	public:
 		ConcreteFunction(const FunctionType& function) :
-			functionObject{ function } { }
+			functionObject(function) { }
+
+		std::unique_ptr<FunctionBase> clone() const override
+		{
+			return std::make_unique<ConcreteFunction>(*this);
+		}
 
 		ReturnType operator()(Args... args) const override
 		{
@@ -126,7 +137,7 @@ private:
 		FunctionType functionObject;
 	};
 
-	std::shared_ptr<FunctionBase> wrappedFunctionPtr;
+	std::unique_ptr<FunctionBase> wrappedFunctionPtr;
 };
 
 #endif // FUNCTION_H
