@@ -14,7 +14,7 @@ class DivisionBy2
 public:
 	DivisionBy2() = default;
 
-	int operator()(int dividend)
+	int operator()(int dividend) const
 	{
 		return dividend / 2;
 	}
@@ -240,4 +240,20 @@ TEST_CASE("call a function with many arguments", "")
 {
 	FunctionWrapper<double(int, double, char)> func = [](int var1, double var2, char var3) { return var1 + var2 + var3; };
 	REQUIRE(func(10, 10.5, 10) == 30.5);
+}
+
+TEST_CASE("const tests", "")
+{
+	const DivisionBy2 divider;
+	const FunctionWrapper<int(int)> func = divider;
+	REQUIRE(func(777) == 388);
+
+	FunctionWrapper<int(int)> func_cpy = func;
+	REQUIRE(func_cpy(777) == 388);
+	
+	func_cpy = [](int multiplicand) { return 2 * multiplicand; };
+	REQUIRE(func_cpy(777) == 1554);
+
+	func_cpy = divider;
+	REQUIRE(func_cpy(777) == 388);
 }
