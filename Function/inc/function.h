@@ -8,27 +8,6 @@
 #include <stdexcept>
 #include <type_traits>
 
-template<bool B, class T = void>
-struct enable_if {};
-
-template<class T>
-struct enable_if<true, T> { typedef T type; };
-
-template<typename A, typename B>
-struct is_same
-{
-	static constexpr bool value = false;
-};
-
-template<typename A>
-struct is_same<A, A>
-{
-	static constexpr bool value = true;
-};
-
-template<typename T>
-struct print;
-
 template< class ReturnType, class... Args >
 class FunctionWrapper;
 
@@ -53,7 +32,7 @@ public:
 
 	FunctionWrapper(FunctionWrapper&& other) = default;
 
-	template<class FunctionType, class enable_if<!is_same<FunctionWrapper, std::remove_reference_t<FunctionType>>::value, FunctionWrapper>::type* = nullptr>
+	template<class FunctionType, class = std::enable_if_t<!std::is_same<FunctionWrapper, std::remove_reference_t<FunctionType>>::value, FunctionWrapper>>
 	FunctionWrapper(FunctionType&& function)
 		: wrappedFunctionPtr(std::make_unique<ConcreteFunction<FunctionType>>(std::forward<FunctionType>(function)))
 	{ }
@@ -73,7 +52,7 @@ public:
 
 	FunctionWrapper& operator=(FunctionWrapper&& rhs) = default;
 	
-	template<class FunctionType, class enable_if<!is_same<FunctionWrapper, std::remove_reference_t<FunctionType>>::value, FunctionWrapper>::type* = nullptr>
+	template<class FunctionType, class = std::enable_if_t<!std::is_same<FunctionWrapper, std::remove_reference_t<FunctionType>>::value, FunctionWrapper>>
 	FunctionWrapper& operator=(FunctionType&& function)
 	{
 		wrappedFunctionPtr = std::make_unique<ConcreteFunction<FunctionType>>(std::forward<FunctionType>(function));
