@@ -8,54 +8,56 @@
 #include <stdexcept>
 #include <type_traits>
 
-template< class ReturnType, class... Args >
-class FunctionWrapper;
+namespace my {
 
 template< class ReturnType, class... Args >
-class FunctionWrapper<ReturnType(Args...)>
+class function;
+
+template< class ReturnType, class... Args >
+class function<ReturnType(Args...)>
 {
 public:
-	~FunctionWrapper() = default;
+	~function() = default;
 
 	// Constructors
-	FunctionWrapper() noexcept
+	function() noexcept
 		: wrappedFunctionPtr(nullptr)
 	{ }
 
-	FunctionWrapper(std::nullptr_t) noexcept
+	function(std::nullptr_t) noexcept
 		: wrappedFunctionPtr(nullptr)
 	{ }
 
-	FunctionWrapper(const FunctionWrapper& other)
+	function(const function& other)
 		: wrappedFunctionPtr(other.wrappedFunctionPtr->clone())
 	{ }
 
-	FunctionWrapper(FunctionWrapper&& other) = default;
+	function(function&& other) = default;
 
-	template<class FunctionType, class = std::enable_if_t<!std::is_same<FunctionWrapper, std::remove_reference_t<FunctionType>>::value, FunctionWrapper>>
-	FunctionWrapper(FunctionType&& function)
-		: wrappedFunctionPtr(std::make_unique<ConcreteFunction<FunctionType>>(std::forward<FunctionType>(function)))
+	template<class FunctionT, class = std::enable_if_t<!std::is_same<function, std::remove_reference_t<FunctionT>>::value, function>>
+	function(FunctionT&& function)
+		: wrappedFunctionPtr(std::make_unique<FunctionModel<FunctionT>>(std::forward<FunctionT>(function)))
 	{ }
 
 	// Assignment operator overloading
-	FunctionWrapper& operator=(std::nullptr_t) noexcept
+	function& operator=(std::nullptr_t) noexcept
 	{
 		wrappedFunctionPtr = nullptr;
 		return *this;
 	}
 
-	FunctionWrapper& operator=(const FunctionWrapper& rhs)
+	function& operator=(const function& rhs)
 	{
 		rhs.wrappedFunctionPtr->clone().swap(this->wrappedFunctionPtr);
 		return *this;
 	}
 
-	FunctionWrapper& operator=(FunctionWrapper&& rhs) = default;
+	function& operator=(function&& rhs) = default;
 	
-	template<class FunctionType, class = std::enable_if_t<!std::is_same<FunctionWrapper, std::remove_reference_t<FunctionType>>::value, FunctionWrapper>>
-	FunctionWrapper& operator=(FunctionType&& function)
+	template<class FunctionT, class = std::enable_if_t<!std::is_same<function, std::remove_reference_t<FunctionT>>::value, function>>
+	function& operator=(FunctionT&& function)
 	{
-		wrappedFunctionPtr = std::make_unique<ConcreteFunction<FunctionType>>(std::forward<FunctionType>(function));
+		wrappedFunctionPtr = std::make_unique<FunctionModel<FunctionT>>(std::forward<FunctionT>(function));
 		return *this;
 	}
 	
@@ -85,37 +87,39 @@ public:
 
 private:
 
-	class FunctionBase
+	class FunctionConcept
 	{
 	public:
-		virtual ~FunctionBase() = default;
+		virtual ~FunctionConcept() = default;
 
-		virtual std::unique_ptr<FunctionBase> clone() const = 0;
+		virtual std::unique_ptr<FunctionConcept> clone() const = 0;
 		virtual ReturnType operator()(Args... args) const = 0;
 	};
 
-	template<class FunctionType>
-	class ConcreteFunction : public FunctionBase
+	template<class FunctionT>
+	class FunctionModel : public FunctionConcept
 	{
 	public:
-		ConcreteFunction(const FunctionType& function) :
-			functionObject(function) { }
+		FunctionModel(const FunctionT& function) :
+			function(function) { }
 
-		std::unique_ptr<FunctionBase> clone() const override
+		std::unique_ptr<FunctionConcept> clone() const override
 		{
-			return std::make_unique<ConcreteFunction>(*this);
+			return std::make_unique<FunctionModel>(*this);
 		}
 
 		ReturnType operator()(Args... args) const override
 		{
-			return functionObject(args...);
+			return function(args...);
 		}
 
 	private:
-		FunctionType functionObject;
+		FunctionT function;
 	};
 
-	std::unique_ptr<FunctionBase> wrappedFunctionPtr;
+	std::unique_ptr<FunctionConcept> wrappedFunctionPtr;
 };
+
+}
 
 #endif // FUNCTION_H
