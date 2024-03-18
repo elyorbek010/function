@@ -124,7 +124,11 @@ namespace my {
 			std::swap(size, other.size);
 		}
 
-		~function() = default;
+		~function()
+		{
+			if (!is_sb())
+				delete storage.ptr;
+		}
 
 	private:
 
