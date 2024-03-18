@@ -257,3 +257,19 @@ TEST_CASE("const tests", "")
 	func_cpy = divider;
 	REQUIRE(func_cpy(777) == 388);
 }
+
+TEST_CASE("big lambda test", "")
+{
+	long long a, b, c, d, e, f, g, h, k, l;
+	my::function<int(int)> func = [a, b, c, d, e, f, g, h, k, l](int multiplicand) { return 2 * multiplicand; };
+	REQUIRE(func(777) == 1554);
+
+	my::function<int(int)> func_cpy = func;
+	REQUIRE(func_cpy(777) == 1554);
+
+	func_cpy = DivisionBy2();
+	REQUIRE(func_cpy(777) == 388);
+
+	func_cpy = func;
+	REQUIRE(func_cpy(777) == 1554);
+}
