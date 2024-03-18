@@ -20,29 +20,35 @@ namespace my {
 	public:
 		// Constructors
 		function() noexcept
-			: is_empty(true)
+			: size(0)
 		{ }
 
 		function(std::nullptr_t) noexcept
-			: is_empty(true)
+			: size(0)
 		{ }
 
 		function(const function& other)
+			: size(other.size)
 		{
-			if (!(is_empty = other.is_empty))
+			if (other.size)
+			{
 				other.pimpl()->clone(pimpl());
+			}
 		}
 
 		function(function&& other)
+			: size(other.size)
 		{
-			if (!(is_empty = other.is_empty))
+			if (other.size)
+			{
 				other.pimpl()->move(pimpl());
-			other.is_empty = true;
+				other.size = 0;
+			}
 		}
 
 		template<class FunctionT, class = std::enable_if_t<!std::is_same<function, std::remove_reference_t<FunctionT>>::value, function>>
 		function(FunctionT&& function)
-			: is_empty(false)
+			: size(sizeof (FunctionModel<FunctionT>))
 		{
 			::new (pimpl()) FunctionModel<FunctionT>(std::forward<FunctionT>(function));
 		}
@@ -50,14 +56,14 @@ namespace my {
 		// Assignment operator overloading
 		function& operator=(std::nullptr_t) noexcept
 		{
-			is_empty = true;
+			size = 0;
 			std::fill_n(buffer, sizeof buffer, 0);
 			return *this;
 		}
 
 		function& operator=(const function& rhs)
 		{
-			if (!(is_empty = rhs.is_empty))
+			if (size = rhs.size)
 			{
 				function copy(rhs);
 				swap(buffer, copy.buffer);
@@ -68,12 +74,12 @@ namespace my {
 
 		function& operator=(function&& rhs)
 		{
-			if (!(is_empty = rhs.is_empty))
+			if (size = rhs.size)
 			{
 				function tmp(std::move(rhs));
 				swap(buffer, tmp.buffer);
+				rhs.size = 0;
 			}
-			rhs.is_empty = true;
 
 			return *this;
 		}
@@ -83,7 +89,7 @@ namespace my {
 		{
 			function tmp(rhs);
 			swap(buffer, tmp.buffer);
-			is_empty = false;
+			size = tmp.size;
 
 			return *this;
 		}
@@ -91,7 +97,7 @@ namespace my {
 		// Comparison operators overloading
 		explicit operator bool() const noexcept
 		{
-			return !is_empty;
+			return size;
 		}
 
 		bool operator==(std::nullptr_t) const noexcept
@@ -106,7 +112,7 @@ namespace my {
 
 		ReturnType operator()(Args... args) const
 		{
-			if (is_empty)
+			if (!size)
 				throw std::runtime_error("empty object");
 
 			return (*pimpl())(args...);
@@ -162,8 +168,11 @@ namespace my {
 			return reinterpret_cast<const FunctionConcept*>(buffer);
 		}
 
-		alignas(16) std::byte buffer[128];
-		bool is_empty;
+		static constexpr size_t capacity = 128;
+		size_t size;
+
+		alignas(16) std::byte buffer[capacity];
+		
 	};
 
 }
