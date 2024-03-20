@@ -177,20 +177,20 @@ private:
 
 	}; // class FunctionModel
 
-	FunctionConcept* get_pimpl() noexcept
-	{
+	template<typename T>
+	T* get_pimpl_impl() const noexcept {
 		if (is_sb())
-			return reinterpret_cast<FunctionConcept*>(storage.buffer);
+			return reinterpret_cast<T*>(const_cast<std::byte*>(storage.buffer));
 		else
 			return storage.ptr;
 	}
 
-	const FunctionConcept* get_pimpl() const noexcept
-	{
-		if (is_sb())
-			return reinterpret_cast<const FunctionConcept*>(storage.buffer);
-		else
-			return storage.ptr;
+	FunctionConcept* get_pimpl() noexcept {
+		return get_pimpl_impl<FunctionConcept>();
+	}
+
+	const FunctionConcept* get_pimpl() const noexcept {
+		return get_pimpl_impl<const FunctionConcept>();
 	}
 
 	void set_pimpl(FunctionConcept* ptr) noexcept
