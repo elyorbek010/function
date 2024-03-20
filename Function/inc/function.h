@@ -12,214 +12,216 @@
 
 namespace my {
 
-	template< class ReturnType, class... Args >
-	class function;
+template< class ReturnType, class... Args >
+class function;
 
-	template< class ReturnType, class... Args >
-	class function<ReturnType(Args...)>
+template< class ReturnType, class... Args >
+class function<ReturnType(Args...)>
+{
+public:
+	// Constructors
+	function() noexcept
+		: size(0), storage()
+	{ }
+
+	function(std::nullptr_t) noexcept
+		: size(0), storage()
+	{ }
+
+	function(const function& other)
+		: size(other.size), storage()
+	{
+		if (other.is_sb())
+			other.get_pimpl()->clone(get_pimpl());
+		else
+			set_pimpl(other.get_pimpl()->clone());
+	}
+
+	function(function&& other)
+		: size(other.size), storage()
+	{
+		if (other.is_sb())
+			other.get_pimpl()->move(get_pimpl());
+		else
+			set_pimpl(other.get_pimpl());
+
+		other.size = 0;
+	}
+
+	template<class FunctionT, class = std::enable_if_t<!std::is_same<function, std::remove_reference_t<FunctionT>>::value, function>>
+	function(FunctionT&& function)
+		: size(sizeof(FunctionModel<FunctionT>)), storage()
+	{
+		if (is_sb())
+			new (get_pimpl()) FunctionModel<FunctionT>(std::forward<FunctionT>(function));
+		else
+			set_pimpl(new FunctionModel<FunctionT>(std::forward<FunctionT>(function)));
+	}
+
+	// Assignment operator overloading
+	function& operator=(std::nullptr_t) noexcept
+	{
+		function tmp(nullptr);
+		tmp.swap(*this);
+
+		return *this;
+	}
+
+	function& operator=(const function& rhs)
+	{
+		function tmp(rhs);
+		tmp.swap(*this);
+
+		return *this;
+	}
+
+	function& operator=(function&& rhs)
+	{
+		function tmp(std::move(rhs));
+		tmp.swap(*this);
+
+		return *this;
+	}
+
+	template<class FunctionT, class = std::enable_if_t<!std::is_same<function, std::remove_reference_t<FunctionT>>::value, function>>
+	function& operator=(FunctionT&& rhs)
+	{
+		function tmp(std::move(rhs));
+		tmp.swap(*this);
+
+		return *this;
+	}
+
+	// Comparison operators overloading
+	explicit operator bool() const noexcept
+	{
+		return !is_empty();
+	}
+
+	bool operator==(std::nullptr_t) const noexcept
+	{
+		return !(this->operator bool());
+	}
+
+	bool operator!=(std::nullptr_t) const noexcept
+	{
+		return this->operator bool();
+	}
+
+	ReturnType operator()(Args... args) const
+	{
+		if (!size)
+			throw std::runtime_error("empty object");
+
+		return (*get_pimpl())(args...);
+	}
+		
+	void swap(function& other)
+	{
+		Storage tmp_storage = other.storage;
+		other.storage = storage;
+		storage = tmp_storage;
+		std::swap(size, other.size);
+	}
+
+	~function()
+	{
+		if (!is_sb())
+			delete storage.ptr;
+	}
+
+private:
+
+	class FunctionConcept
 	{
 	public:
-		// Constructors
-		function() noexcept
-			: size(0), storage()
+		virtual ~FunctionConcept() = default;
+
+		virtual FunctionConcept* clone() const = 0;
+		virtual void clone(FunctionConcept* memory) const = 0;
+		virtual void move(FunctionConcept* memory) = 0;
+		virtual ReturnType operator()(Args... args) const = 0;
+
+	}; // class FunctionConcept
+
+	template<class FunctionT>
+	class FunctionModel : public FunctionConcept
+	{
+	public:
+		FunctionModel(const FunctionT& function) :
+			function_(function)
 		{ }
 
-		function(std::nullptr_t) noexcept
-			: size(0), storage()
-		{ }
-
-		function(const function& other)
-			: size(other.size), storage()
+		FunctionConcept* clone() const override
 		{
-			if (other.is_sb())
-				other.get_pimpl()->clone(get_pimpl());
-			else
-				set_pimpl(other.get_pimpl()->clone());
+			return new FunctionModel(*this);
 		}
 
-		function(function&& other)
-			: size(other.size), storage()
+		void clone(FunctionConcept* memory) const override
 		{
-			if (other.is_sb())
-				other.get_pimpl()->move(get_pimpl());
-			else
-				set_pimpl(other.get_pimpl());
-
-			other.size = 0;
+			new (memory) FunctionModel(*this);
 		}
 
-		template<class FunctionT, class = std::enable_if_t<!std::is_same<function, std::remove_reference_t<FunctionT>>::value, function>>
-		function(FunctionT&& function)
-			: size(sizeof(FunctionModel<FunctionT>)), storage()
+		void move(FunctionConcept* memory) override
 		{
-			if (is_sb())
-				::new (get_pimpl()) FunctionModel<FunctionT>(std::forward<FunctionT>(function));
-			else
-				set_pimpl(new FunctionModel<FunctionT>(std::forward<FunctionT>(function)));
+			new (memory) FunctionModel(std::move(*this));
 		}
 
-		// Assignment operator overloading
-		function& operator=(std::nullptr_t) noexcept
+		ReturnType operator()(Args... args) const override
 		{
-			function tmp(nullptr);
-			tmp.swap(*this);
-
-			return *this;
-		}
-
-		function& operator=(const function& rhs)
-		{
-			function tmp(rhs);
-			tmp.swap(*this);
-
-			return *this;
-		}
-
-		function& operator=(function&& rhs)
-		{
-			function tmp(std::move(rhs));
-			tmp.swap(*this);
-
-			return *this;
-		}
-
-		template<class FunctionT, class = std::enable_if_t<!std::is_same<function, std::remove_reference_t<FunctionT>>::value, function>>
-		function& operator=(FunctionT&& rhs)
-		{
-			function tmp(std::move(rhs));
-			tmp.swap(*this);
-
-			return *this;
-		}
-
-		// Comparison operators overloading
-		explicit operator bool() const noexcept
-		{
-			return !is_empty();
-		}
-
-		bool operator==(std::nullptr_t) const noexcept
-		{
-			return !(this->operator bool());
-		}
-
-		bool operator!=(std::nullptr_t) const noexcept
-		{
-			return this->operator bool();
-		}
-
-		ReturnType operator()(Args... args) const
-		{
-			if (!size)
-				throw std::runtime_error("empty object");
-
-			return (*get_pimpl())(args...);
-		}
-		
-		void swap(function& other)
-		{
-			Storage tmp_storage = other.storage;
-			other.storage = storage;
-			storage = tmp_storage;
-			std::swap(size, other.size);
-		}
-
-		~function()
-		{
-			if (!is_sb())
-				delete storage.ptr;
+			return function_(args...);
 		}
 
 	private:
+		FunctionT function_;
 
-		class FunctionConcept
-		{
-		public:
-			virtual ~FunctionConcept() = default;
+	}; // class FunctionModel
 
-			virtual FunctionConcept* clone() const = 0;
-			virtual void clone(FunctionConcept* memory) const = 0;
-			virtual void move(FunctionConcept* memory) = 0;
-			virtual ReturnType operator()(Args... args) const = 0;
-		};
+	FunctionConcept* get_pimpl() noexcept
+	{
+		if (is_sb())
+			return reinterpret_cast<FunctionConcept*>(storage.buffer);
+		else
+			return storage.ptr;
+	}
 
-		template<class FunctionT>
-		class FunctionModel : public FunctionConcept
-		{
-		public:
-			FunctionModel(const FunctionT& function) :
-				function_(function)
-			{ }
+	const FunctionConcept* get_pimpl() const noexcept
+	{
+		if (is_sb())
+			return reinterpret_cast<const FunctionConcept*>(storage.buffer);
+		else
+			return storage.ptr;
+	}
 
-			FunctionConcept* clone() const override
-			{
-				return new FunctionModel(*this);
-			}
+	void set_pimpl(FunctionConcept* ptr) noexcept
+	{
+		storage.ptr = ptr;
+	}
 
-			void clone(FunctionConcept* memory) const override
-			{
-				::new (memory) FunctionModel(*this);
-			}
+	bool is_sb() const // is small buffer
+	{
+		return size <= capacity;
+	}
 
-			void move(FunctionConcept* memory) override
-			{
-				::new (memory) FunctionModel(std::move(*this));
-			}
+	bool is_empty() const
+	{
+		return size == 0;
+	}
 
-			ReturnType operator()(Args... args) const override
-			{
-				return function_(args...);
-			}
+	static constexpr size_t capacity = 16;
+	size_t size;
 
-		private:
-			FunctionT function_;
-		};
+	union Storage
+	{
+		alignas(capacity) std::byte buffer[capacity];
+		FunctionConcept* ptr;
 
-		FunctionConcept* get_pimpl() noexcept
-		{
-			if (is_sb())
-				return reinterpret_cast<FunctionConcept*>(storage.buffer);
-			else
-				return storage.ptr;
-		}
-
-		const FunctionConcept* get_pimpl() const noexcept
-		{
-			if (is_sb())
-				return reinterpret_cast<const FunctionConcept*>(storage.buffer);
-			else
-				return storage.ptr;
-		}
-
-		void set_pimpl(FunctionConcept* ptr) noexcept
-		{
-			storage.ptr = ptr;
-		}
-
-		bool is_sb() const // is small buffer
-		{
-			return size <= capacity;
-		}
-
-		bool is_empty() const
-		{
-			return size == 0;
-		}
-
-		static constexpr size_t capacity = 16;
-		size_t size;
-
-		union Storage
-		{
-			alignas(16) std::byte buffer[capacity];
-			FunctionConcept* ptr;
-
-			Storage() { }
-			~Storage() { }
-		} storage;
+		Storage() { }
+		~Storage() { }
+	} storage;
 		
-	};
+}; // class function
 
-}
+} // namespace my
 
 #endif // FUNCTION_H
