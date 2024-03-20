@@ -126,8 +126,13 @@ public:
 
 	~function()
 	{
+		if (is_empty())
+			return;
+
 		if (!is_sb())
 			delete storage.ptr;
+		else
+			get_pimpl()->~FunctionConcept();
 	}
 
 private:
