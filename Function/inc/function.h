@@ -208,18 +208,18 @@ private:
 		return size == 0;
 	}
 
-	static constexpr size_t capacity = 16;
-	size_t size;
+	static constexpr size_t capacity = 2 * sizeof(void *);
+	size_t size{0};
 
-	union Storage
+	alignas(max_align_t) union Storage
 	{
-		alignas(capacity) std::byte buffer[capacity];
+		std::byte buffer[capacity];
 		FunctionConcept* ptr;
-
+		
 		Storage() { }
 		~Storage() { }
 	} storage;
-		
+
 }; // class function
 
 } // namespace my
