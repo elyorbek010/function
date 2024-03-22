@@ -1,7 +1,6 @@
 ﻿#ifndef FUNCTION_H
 #define FUNCTION_H
 
-
 #include <stdexcept>
 
 namespace my {
@@ -31,7 +30,7 @@ private: // Helper classes
 	{
 	public:
 		FunctionModel(const FunctionT& function) :
-			function_(function)
+			function_(std::move(function))
 		{ }
 
 		FunctionConcept* clone() const override
@@ -55,7 +54,7 @@ private: // Helper classes
 		}
 
 	private:
-		FunctionT function_;
+		const FunctionT function_;
 
 	}; // class FunctionModel
 
@@ -92,12 +91,12 @@ public: // Special member functions
 
 	template<class FunctionT, class = std::enable_if_t<!std::is_same<function, std::remove_reference_t<FunctionT>>::value, function>>
 	function(FunctionT&& function)
-		: size(sizeof(FunctionModel<FunctionT>)), storage()
+		: size(sizeof(FunctionModel<std::decay_t<FunctionT>>)), storage()
 	{
 		if (is_small_buffer())
-			new (get_pimpl()) FunctionModel<FunctionT>(std::forward<FunctionT>(function));
+			new (get_pimpl()) FunctionModel<std::decay_t<FunctionT>>(std::forward<FunctionT>(function));
 		else
-			set_pimpl(new FunctionModel<FunctionT>(std::forward<FunctionT>(function)));
+			set_pimpl(new FunctionModel<std::decay_t<FunctionT>>(std::forward<FunctionT>(function)));
 	}
 
 	// Destructor
