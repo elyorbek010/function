@@ -1,14 +1,8 @@
 ﻿#ifndef FUNCTION_H
 #define FUNCTION_H
 
-#include <memory>
-#include <utility>
-#include <iostream>
-#include <typeinfo>
+
 #include <stdexcept>
-#include <type_traits>
-#include <cstring>
-#include <algorithm>
 
 namespace my {
 
@@ -18,124 +12,7 @@ class function;
 template< class ReturnType, class... Args >
 class function<ReturnType(Args...)>
 {
-public:
-	// Constructors
-	function() noexcept
-		: size(0), storage()
-	{ }
-
-	function(std::nullptr_t) noexcept
-		: size(0), storage()
-	{ }
-
-	function(const function& other)
-		: size(other.size), storage()
-	{
-		if (other.is_sb())
-			other.get_pimpl()->clone(get_pimpl());
-		else
-			set_pimpl(other.get_pimpl()->clone());
-	}
-
-	function(function&& other)
-		: size(other.size), storage()
-	{
-		if (other.is_sb())
-			other.get_pimpl()->move(get_pimpl());
-		else
-			set_pimpl(other.get_pimpl());
-
-		other.size = 0;
-	}
-
-	template<class FunctionT, class = std::enable_if_t<!std::is_same<function, std::remove_reference_t<FunctionT>>::value, function>>
-	function(FunctionT&& function)
-		: size(sizeof(FunctionModel<FunctionT>)), storage()
-	{
-		if (is_sb())
-			new (get_pimpl()) FunctionModel<FunctionT>(std::forward<FunctionT>(function));
-		else
-			set_pimpl(new FunctionModel<FunctionT>(std::forward<FunctionT>(function)));
-	}
-
-	// Assignment operator overloading
-	function& operator=(std::nullptr_t) noexcept
-	{
-		function tmp(nullptr);
-		tmp.swap(*this);
-
-		return *this;
-	}
-
-	function& operator=(const function& rhs)
-	{
-		function tmp(rhs);
-		tmp.swap(*this);
-
-		return *this;
-	}
-
-	function& operator=(function&& rhs)
-	{
-		function tmp(std::move(rhs));
-		tmp.swap(*this);
-
-		return *this;
-	}
-
-	template<class FunctionT, class = std::enable_if_t<!std::is_same<function, std::remove_reference_t<FunctionT>>::value, function>>
-	function& operator=(FunctionT&& rhs)
-	{
-		function tmp(std::move(rhs));
-		tmp.swap(*this);
-
-		return *this;
-	}
-
-	// Comparison operators overloading
-	explicit operator bool() const noexcept
-	{
-		return !is_empty();
-	}
-
-	bool operator==(std::nullptr_t) const noexcept
-	{
-		return !(this->operator bool());
-	}
-
-	bool operator!=(std::nullptr_t) const noexcept
-	{
-		return this->operator bool();
-	}
-
-	ReturnType operator()(Args... args) const
-	{
-		if (!size)
-			throw std::runtime_error("empty object");
-
-		return (*get_pimpl())(args...);
-	}
-		
-	void swap(function& other)
-	{
-		Storage tmp_storage = other.storage;
-		other.storage = storage;
-		storage = tmp_storage;
-		std::swap(size, other.size);
-	}
-
-	~function()
-	{
-		if (is_empty())
-			return;
-
-		if (!is_sb())
-			delete storage.ptr;
-		else
-			get_pimpl()->~FunctionConcept();
-	}
-
-private:
+private: // Helper classes
 
 	class FunctionConcept
 	{
@@ -182,9 +59,129 @@ private:
 
 	}; // class FunctionModel
 
+public: // Special member functions
+
+	// Constructors
+	function() noexcept
+		: size(0), storage()
+	{ }
+
+	function(std::nullptr_t) noexcept
+		: size(0), storage()
+	{ }
+
+	function(const function& other)
+		: size(other.size), storage()
+	{
+		if (other.is_small_buffer())
+			other.get_pimpl()->clone(get_pimpl());
+		else
+			set_pimpl(other.get_pimpl()->clone());
+	}
+
+	function(function&& other)
+		: size(other.size), storage()
+	{
+		if (other.is_small_buffer())
+			other.get_pimpl()->move(get_pimpl());
+		else
+			set_pimpl(other.get_pimpl());
+
+		other.size = 0;
+	}
+
+	template<class FunctionT, class = std::enable_if_t<!std::is_same<function, std::remove_reference_t<FunctionT>>::value, function>>
+	function(FunctionT&& function)
+		: size(sizeof(FunctionModel<FunctionT>)), storage()
+	{
+		if (is_small_buffer())
+			new (get_pimpl()) FunctionModel<FunctionT>(std::forward<FunctionT>(function));
+		else
+			set_pimpl(new FunctionModel<FunctionT>(std::forward<FunctionT>(function)));
+	}
+
+	// Destructor
+	~function()
+	{
+		if (is_empty())
+			return;
+
+		if (!is_small_buffer())
+			delete storage.ptr;
+		else
+			get_pimpl()->~FunctionConcept();
+	}
+
+	// Assignment operator overloading
+	function& operator=(std::nullptr_t) noexcept
+	{
+		function tmp(nullptr);
+		tmp.swap(*this);
+
+		return *this;
+	}
+
+	function& operator=(const function& rhs)
+	{
+		function tmp(rhs);
+		tmp.swap(*this);
+
+		return *this;
+	}
+
+	function& operator=(function&& rhs)
+	{
+		function tmp(std::move(rhs));
+		tmp.swap(*this);
+
+		return *this;
+	}
+
+	template<class FunctionT, class = std::enable_if_t<!std::is_same<function, std::remove_reference_t<FunctionT>>::value, function>>
+	function& operator=(FunctionT&& rhs)
+	{
+		function tmp(std::move(rhs));
+		tmp.swap(*this);
+
+		return *this;
+	}
+
+	// Function call operator
+	ReturnType operator()(Args... args) const
+	{
+		if (is_empty())
+			throw std::runtime_error("empty object");
+
+		return (*get_pimpl())(args...);
+	}
+
+	// Comparison operators overloading
+	explicit operator bool() const noexcept
+	{
+		return !is_empty();
+	}
+
+	bool operator==(std::nullptr_t) const noexcept
+	{
+		return !(this->operator bool());
+	}
+
+	bool operator!=(std::nullptr_t) const noexcept
+	{
+		return this->operator bool();
+	}
+
+private: // Helper member functions
+
+	void swap(function& other)
+	{
+		std::swap(storage, other.storage);
+		std::swap(size, other.size);
+	}
+
 	template<typename T>
 	T* get_pimpl_impl() const noexcept {
-		if (is_sb())
+		if (is_small_buffer())
 			return reinterpret_cast<T*>(const_cast<std::byte*>(storage.buffer));
 		else
 			return storage.ptr;
@@ -203,7 +200,7 @@ private:
 		storage.ptr = ptr;
 	}
 
-	bool is_sb() const // is small buffer
+	bool is_small_buffer() const
 	{
 		return size <= capacity;
 	}
@@ -212,6 +209,8 @@ private:
 	{
 		return size == 0;
 	}
+
+private: // Member variables
 
 	static constexpr size_t capacity = 2 * sizeof(void *);
 	size_t size{0};
