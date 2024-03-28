@@ -12,8 +12,6 @@ int identical_return(int ret)
 class DivisionBy2
 {
 public:
-	DivisionBy2() = default;
-
 	int operator()(int dividend) const
 	{
 		return dividend / 2;
