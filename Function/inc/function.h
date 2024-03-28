@@ -30,7 +30,7 @@ private: // Helper classes
 	{
 	public:
 		FunctionModel(const FunctionT& function) :
-			function_(std::move(function))
+			function_(function)
 		{ }
 
 		FunctionConcept* clone() const override
