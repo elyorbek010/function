@@ -1,8 +1,7 @@
+#include <vector>
 #include <catch2/catch_test_macros.hpp>
 
-#include <vector>
-
-#include <function.h>
+#include "function.h"
 
 int identical_return(int ret)
 {
