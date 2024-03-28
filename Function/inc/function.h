@@ -105,10 +105,10 @@ public: // Special member functions
 		if (is_empty())
 			return;
 
-		if (!is_small_buffer())
-			delete storage.ptr;
-		else
+		if (is_small_buffer())
 			get_pimpl()->~FunctionConcept();
+		else
+			delete storage.ptr;
 	}
 
 	// Assignment operator overloading
