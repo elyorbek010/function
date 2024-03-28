@@ -155,19 +155,19 @@ public: // Special member functions
 	}
 
 	// Comparison operators overloading
-	explicit operator bool() const noexcept
-	{
-		return !is_empty();
-	}
-
 	bool operator==(std::nullptr_t) const noexcept
 	{
-		return !(this->operator bool());
+		return is_empty();
 	}
 
 	bool operator!=(std::nullptr_t) const noexcept
 	{
-		return this->operator bool();
+		return !(this->operator==(nullptr));
+	}
+
+	explicit operator bool() const noexcept
+	{
+		return this->operator!=(nullptr);
 	}
 
 private: // Helper member functions
